@@ -252,5 +252,6 @@ if __name__ == '__main__':
     else:
         print "Must provide at least 1 argument"
     s = Sentinent(sent_file,out_file)
-
+    s.derive_tweet(False)
+    s.get_term_freq()
 

@@ -67,8 +67,8 @@ class USA_Map:
             cls.states[state['name']] = map(lambda p: (float(p['lng']),float(p['lat'])),point)
     @classmethod
     def in_state(cls,x,y):
-        for state in states:
-            if point_in_poly(x,y,states[state]):
+        for state in cls.states:
+            if cls.point_in_poly(x,y,cls.states[state]):
                 return cls.us_state_abbrev[state]
     @classmethod
     def point_in_poly(cls,x,y,poly):#x : lng, y : lat
@@ -117,6 +117,8 @@ class Sentinent:
         self.term_counter = {}
         self.number_tweet = 0.0
         self.new_term = {}
+        self.states_score = {}
+        self.hashtags = {}
         #self.scores = dict()
         #self.sent = dict()
         self.get_scores()
@@ -131,16 +133,37 @@ class Sentinent:
     def status(self):
         self.lines(self.sent_file)
         self.lines(self.tweet_file)
-    def derive_tweet(self,show_result=True):
+    def derive_tweet(self,show_result=True, get_tags=True):
         self.sent = dict()
         with open(self.tweet_file,'r') as f:
             for t in f:
-                text = json.loads(t).get('text')
+                tweet = json.loads(t);
+                text = tweet.get('text')
+                
+                if get_tags:
+                    self.get_tags_and_count(tweet)
+                    
+                if (not text):
+                    continue;
+                    
+                    
+                state = "none"
+                coords = tweet.get('place')
+                if (coords):
+                    coords = coords.get('bounding_box')
+                    if coords:
+                        coords = coords.get('coordinates');
+                        if (coords):
+                            coords = coords[0][0]
+                            state = USA_Map.in_state(coords[0], coords[1]) or "outside"
+                    
+                    
+                    
                 if text:
                     if show_result:
-                        sys.stdout.write(str(self.compute_tweet_score(text))+'\n')
+                        sys.stdout.write(str(self.compute_tweet_score(text, state))+'\n')
                     else:
-                        self.compute_tweet_score(text)
+                        self.compute_tweet_score(text, state)
     def is_suitable_word(self,word):
         for i in word:
             if i not in string.printable:
@@ -153,7 +176,7 @@ class Sentinent:
         #if word in nltk.corpus.stopwords.words('english'):
             #return False
         return True
-    def compute_tweet_score(self,text,counter=True):
+    def compute_tweet_score(self,text,state, counter=True, state_score=True):
         total = 0.0
         words = text.split()
         length = 0
@@ -183,6 +206,12 @@ class Sentinent:
                 self.new_term[w] = (total / length) #self.new_term_counter[w]
             else:
                 self.new_term[w] = (self.new_term[w] + (total / length)) / 2
+                
+                
+                
+        if not self.states_score.get(state):
+            self.states_score[state] = []
+        self.states_score[state].append(total)
         return total
     def get_term_score(self):
         for i,v in self.new_term.iteritems():
@@ -190,10 +219,52 @@ class Sentinent:
     def get_term_freq(self):
         for i,v in self.term_counter.iteritems():
             sys.stdout.write(i+" "+str(v / self.number_tweet)+"\n")
+    def get_tweet_location_scores(self):
+        # -none,-outside
+        happinest_state = ""
+        best_happy_score = 0
+        del self.states_score['none']
+        del self.states_score['outside']
+        for i,v in self.states_score.iteritems():
+            avg = Stat.average(v)
+            if avg > best_happy_score:
+                best_happy_score = avg
+                happinest_state = i
+        sys.stdout.write(happinest_state)
+    def get_tags_and_count(self, tweet):
+        #hashtags = Traversal.get_key_value(tweet, "hashtags")
+        hashtags = []
+        if 'entities' in tweet:
+            hashtags = tweet['entities'].get('hashtags') or []
+        for tag in hashtags:
+            if (not self.hashtags.get(tag['text'])):
+                self.hashtags[tag['text']] = 1.
+            else:
+                self.hashtags[tag['text']] += 1
+    def show_tags_count(self):
+        import operator
+        top = sorted(self.hashtags.iteritems(),key=operator.itemgetter(1),reverse=True)[:10]
+        for i, v in top:
+            sys.stdout.write(i+" "+str(v)+"\n")
+class Stat:
+    @classmethod
+    def average(cls, number_box):
+        return reduce(lambda x, y: x+y, number_box) / len(number_box)
+class Traversal:
+    @classmethod
+    def get_key_value(cls, dictionary, key_arg, default=""):
+        for key, value in dictionary.items():
+            if key == key_arg:
+                return value
+            elif isinstance(value, dict):
+                 cls.get_key_value(value, key_arg)
+        return default
 if __name__ == '__main__':
     USA_Map.load()
     sent_file = sys.argv[1]
     out_file = sys.argv[2]
     s = Sentinent(sent_file,out_file)
-    s.derive_tweet(False)
-    s.get_term_freq()
+    s.derive_tweet(False, True)
+    #s.get_tweet_location_scores()
+    s.show_tags_count()
+a=r"""{"created_at":"Thu Jul 11 04:05:31 +0000 2013","id":355175998964236289,"id_str":"355175998964236289","text":"The 2011 punya tatau resolved ke tak. #sajaprovoke","source":"\u003ca href=\"http:\/\/twitter.com\/download\/android\" rel=\"nofollow\"\u003eTwitter for Android\u003c\/a\u003e","truncated":false,"in_reply_to_status_id":null,"in_reply_to_status_id_str":null,"in_reply_to_user_id":null,"in_reply_to_user_id_str":null,"in_reply_to_screen_name":null,"user":{"id":14491171,"id_str":"14491171","name":"Barbarella Electric","screen_name":"JulesJulietta","location":"\u00dcT: 3.2193685,101.7264261","url":"http:\/\/www.manageflitter.com","description":"Familiarity really does breed contempt. I know I am but what are you? I like to RT weird tweets. I'm a re-tweirdo. Caution: Bi-lingual tweets. Pro-PDRMsia.","protected":false,"followers_count":3807,"friends_count":1442,"listed_count":238,"created_at":"Wed Apr 23 10:36:32 +0000 2008","favourites_count":33897,"utc_offset":28800,"time_zone":"Kuala Lumpur","geo_enabled":false,"verified":false,"statuses_count":122269,"lang":"en","contributors_enabled":false,"is_translator":false,"profile_background_color":"FFF04D","profile_background_image_url":"http:\/\/a0.twimg.com\/profile_background_images\/482884674\/zumba_fitness.jpg","profile_background_image_url_https":"https:\/\/si0.twimg.com\/profile_background_images\/482884674\/zumba_fitness.jpg","profile_background_tile":true,"profile_image_url":"http:\/\/a0.twimg.com\/profile_images\/3638905404\/6e0de85522ade528a6d1b8097498df6c_normal.jpeg","profile_image_url_https":"https:\/\/si0.twimg.com\/profile_images\/3638905404\/6e0de85522ade528a6d1b8097498df6c_normal.jpeg","profile_banner_url":"https:\/\/pbs.twimg.com\/profile_banners\/14491171\/1348291984","profile_link_color":"0099CC","profile_sidebar_border_color":"FFF8AD","profile_sidebar_fill_color":"F6FFD1","profile_text_color":"333333","profile_use_background_image":true,"default_profile":false,"default_profile_image":false,"following":null,"follow_request_sent":null,"notifications":null},"geo":null,"coordinates":null,"place":null,"contributors":null,"retweet_count":0,"favorite_count":0,"entities":{"hashtags":[{"text":"sajaprovoke","indices":[38,50]}],"symbols":[],"urls":[],"user_mentions":[]},"favorited":false,"retweeted":false,"filter_level":"medium","lang":"id"}"""
