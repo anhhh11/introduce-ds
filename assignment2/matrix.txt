@@ -1,0 +1,20 @@
+
+select * from (
+
+select r,c,sum(v)
+    from
+    (select a.row_num as r,b.col_num as c,(a.value*b.value) as v
+    from a
+    join b on a.col_num=b.row_num)
+    group by r,c
+
+)
+where r=2 and c=3;
+
+
+
+select a.count as r1,b.count as c1,b.count as r2,a.count as c2
+from Frequency a
+join Frequency b on a.term=b.term
+where a.docid='10080_txt_crude' and b.docid='17035_txt_earn'
+

@@ -1,0 +1,25 @@
+(1) near "count": syntax error
+(1) no such column: k
+(1) near ")": syntax error
+(1) near "having": syntax error
+(1) near "having": syntax error
+(1) misuse of aggregate function count()
+(1) near "select": syntax error
+(1) near "select": syntax error
+(1) near "select": syntax error
+(1) no such column: docid
+(1) no such column: word
+(1) no such column: docid
+(1) near ";": syntax error
+(1) near "where": syntax error
+(1) near "INTE": syntax error
+(1) near "(": syntax error
+(1) near "(": syntax error
+(1) near "(": syntax error
+(1) near "(": syntax error
+(1) near "(": syntax error
+(1) near "select": syntax error
+(1) near "echo": syntax error
+(1) near "exit": syntax error
+(1) near "quit": syntax error
+(1) near "exit": syntax error
