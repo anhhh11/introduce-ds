@@ -16,7 +16,7 @@ class MapReduce:
         for line in data:
             record = json.loads(line)
             mapper(record)
-
+        #print(self.intermediate)
         for key in self.intermediate:
             reducer(key, self.intermediate[key])
 
